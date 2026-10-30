@@ -287,17 +287,28 @@
 			const playerX = 155;
 			const playerSize = 34;
 			const levelLength = 4200;
-			const obstaclePlan = [
-				[600, "spike"], [980, "spike"], [1370, "block"], [1770, "spike"],
-				[2160, "spike"], [2570, "block"], [2990, "spike"], [3400, "spike"],
-				[3790, "block"], [4110, "spike"]
+			const obstaclePlans = [
+				[
+					[650, "spike"], [1200, "spike"], [1800, "block"], [2400, "spike"],
+					[3000, "spike"], [3600, "block"], [4050, "spike"]
+				],
+				[
+					[550, "spike"], [1000, "block"], [1450, "spike"], [1900, "spike"],
+					[2350, "block"], [2800, "spike"], [3250, "block"], [3700, "spike"]
+				],
+				[
+					[500, "spike"], [870, "block"], [1240, "spike"], [1610, "spike"],
+					[1980, "block"], [2350, "spike"], [2720, "block"], [3090, "spike"],
+					[3460, "spike"], [3830, "block"]
+				]
 			];
+			const difficultyNames = ["Einfach", "Mittel", "Schwer"];
 			const bestKey = "kantensprung-best";
 			let state = "ready";
 			let score = 0;
 			let best = Number(localStorage.getItem(bestKey)) || 0;
 			let distance = 0;
-			let nextLoopDistance = levelLength;
+			let difficulty = 0;
 			let speed = 280;
 			let playerY = groundY - playerSize;
 			let velocityY = 0;
@@ -321,7 +332,7 @@
 			function resetRun() {
 				score = 0;
 				distance = 0;
-				nextLoopDistance = levelLength;
+				difficulty = 0;
 				speed = 280;
 				playerY = groundY - playerSize;
 				velocityY = 0;
@@ -336,7 +347,7 @@
 				state = "running";
 				lastTime = performance.now();
 				overlay.classList.add("hidden");
-				runStatus.textContent = "Im Lauf";
+				runStatus.textContent = `Im Lauf · ${difficultyNames[difficulty]}`;
 				requestAnimationFrame(loop);
 			}
 
@@ -389,9 +400,26 @@
 				if (state === "running") requestAnimationFrame(loop);
 			}
 
+			function getObstacles() {
+				const currentLoop = Math.floor(distance / levelLength);
+				const obstacles = [];
+				for (let loopIndex = currentLoop; loopIndex <= currentLoop + 1; loopIndex++) {
+					const plan = obstaclePlans[Math.min(loopIndex, obstaclePlans.length - 1)];
+					for (const [offset, type] of plan) {
+						obstacles.push([loopIndex * levelLength + offset, type]);
+					}
+				}
+				return obstacles;
+			}
+
 			function update(delta) {
 				distance += speed * delta;
-				speed = Math.min(380, 280 + distance * 0.012);
+				speed = Math.min(380, 280 + distance * 0.008);
+				const nextDifficulty = Math.min(Math.floor(distance / levelLength), difficultyNames.length - 1);
+				if (nextDifficulty !== difficulty) {
+					difficulty = nextDifficulty;
+					runStatus.textContent = `Im Lauf · ${difficultyNames[difficulty]}`;
+				}
 				score = Math.floor(distance / 13);
 				scoreLabel.textContent = String(score).padStart(3, "0");
 				progressFill.style.width = `${distance % levelLength / levelLength * 100}%`;
@@ -414,7 +442,7 @@
 					particle.vy += 260 * delta;
 				}
 
-				for (const [obstacleDistance, type] of obstaclePlan) {
+				for (const [obstacleDistance, type] of getObstacles()) {
 					const x = playerX + obstacleDistance - distance;
 					const obstacleWidth = type === "block" ? 39 : 36;
 					if (x + obstacleWidth < playerX || x > playerX + playerSize) continue;
@@ -428,10 +456,6 @@
 					}
 				}
 
-				if (distance >= nextLoopDistance) {
-					for (let index = 0; index < obstaclePlan.length; index++) obstaclePlan[index][0] += levelLength;
-					nextLoopDistance += levelLength;
-				}
 			}
 
 			function draw() {
@@ -468,7 +492,7 @@
 				context.fillStyle = "rgba(201, 242, 92, .18)";
 				for (let x = -((distance % 48)); x < width; x += 48) context.fillRect(x, groundY + 27, 24, 2);
 
-				for (const [obstacleDistance, type] of obstaclePlan) {
+				for (const [obstacleDistance, type] of getObstacles()) {
 					const x = playerX + obstacleDistance - distance;
 					if (x < -55 || x > width + 55) continue;
 					if (type === "spike") drawSpike(x, groundY);
