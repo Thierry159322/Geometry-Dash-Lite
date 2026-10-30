@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="de">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#f4f3ec">
+	<title>Kantensprung</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			color-scheme: light;
+			--paper: #f4f3ec;
+			--ink: #171a16;
+			--muted: #77796f;
+			--line: #dedfd4;
+			--lime: #c9f25c;
+			--coral: #ff654d;
+			--blue: #79b8f2;
+			font-family: "Space Grotesk", "Trebuchet MS", sans-serif;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			min-width: 320px;
+			min-height: 100vh;
+			color: var(--ink);
+			background-color: var(--paper);
+			background-image: radial-gradient(#d8d9cf 0.7px, transparent 0.7px);
+			background-size: 15px 15px;
+		}
+
+		button { font: inherit; }
+
+		.page {
+			width: min(1120px, calc(100% - 48px));
+			min-height: 100vh;
+			margin: 0 auto;
+			padding: 27px 0 22px;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.topbar, .brand, .top-stats, .stat, .underbar, .controls, .control-hint {
+			display: flex;
+			align-items: center;
+		}
+
+		.topbar { justify-content: space-between; gap: 20px; }
+
+		.brand { gap: 12px; }
+
+		.brand-mark {
+			width: 34px;
+			height: 34px;
+			position: relative;
+			display: grid;
+			place-items: center;
+			background: var(--lime);
+			border: 2px solid var(--ink);
+			transform: rotate(-7deg);
+		}
+
+		.brand-mark::after {
+			content: "";
+			width: 10px;
+			height: 10px;
+			border: 2px solid var(--ink);
+			background: var(--coral);
+			transform: rotate(7deg);
+		}
+
+		.brand-name { font-size: 15px; font-weight: 700; line-height: 1.05; letter-spacing: 0; }
+		.brand-tag { margin-top: 4px; color: var(--muted); font: 10px "DM Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+
+		.top-stats { gap: 26px; }
+
+		.stat { gap: 9px; }
+
+		.stat-label { color: var(--muted); font: 10px "DM Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+		.stat-value { min-width: 38px; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+		.sound-button {
+			width: 38px;
+			height: 38px;
+			display: grid;
+			place-items: center;
+			color: var(--ink);
+			background: transparent;
+			border: 1px solid var(--line);
+			border-radius: 2px;
+			cursor: pointer;
+			transition: background 160ms ease, transform 160ms ease;
+		}
+
+		.sound-button:hover { background: white; transform: translateY(-2px); }
+		.sound-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+		main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 25px 0; }
+
+		.intro {
+			display: flex;
+			align-items: end;
+			justify-content: space-between;
+			gap: 24px;
+			margin: 0 0 15px;
+			animation: rise-in 500ms both;
+		}
+
+		.eyebrow { margin: 0 0 7px; color: #77796f; font: 10px "DM Mono", monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+		h1 { margin: 0; font-size: clamp(24px, 4vw, 35px); line-height: 1; letter-spacing: -0.035em; font-weight: 700; }
+		h1 span { color: var(--coral); }
+
+		.level-note { margin: 0 2px 3px 0; color: var(--muted); font: 11px "DM Mono", monospace; text-align: right; }
+
+		.game-frame {
+			position: relative;
+			overflow: hidden;
+			width: 100%;
+			aspect-ratio: 16 / 8.15;
+			min-height: 300px;
+			max-height: 570px;
+			border: 2px solid var(--ink);
+			background: #18251f;
+			box-shadow: 7px 7px 0 var(--ink);
+			touch-action: manipulation;
+			animation: rise-in 600ms 70ms both;
+		}
+
+		canvas { display: block; width: 100%; height: 100%; }
+
+		.game-overlay {
+			position: absolute;
+			inset: 0;
+			display: grid;
+			place-items: center;
+			background: linear-gradient(90deg, rgb(9 17 13 / 64%), rgb(9 17 13 / 26%));
+			transition: opacity 180ms ease, visibility 180ms ease;
+		}
+
+		.game-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+		.overlay-content { width: min(380px, 84%); color: white; text-align: center; }
+		.overlay-kicker { margin: 0 0 10px; color: var(--lime); font: 10px "DM Mono", monospace; letter-spacing: 0.16em; text-transform: uppercase; }
+		.overlay-title { margin: 0; font-size: clamp(30px, 6vw, 54px); line-height: 0.98; font-weight: 700; letter-spacing: -0.045em; }
+		.overlay-copy { margin: 13px auto 21px; color: #d3ddd4; font-size: 13px; line-height: 1.55; }
+
+		.play-button {
+			min-width: 166px;
+			min-height: 49px;
+			padding: 0 21px;
+			color: var(--ink);
+			background: var(--lime);
+			border: 2px solid var(--ink);
+			box-shadow: 4px 4px 0 var(--coral);
+			font-size: 13px;
+			font-weight: 700;
+			cursor: pointer;
+			transition: transform 140ms ease, box-shadow 140ms ease;
+		}
+
+		.play-button:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--coral); }
+		.play-button:focus-visible, .sound-button:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+		.progress-track { height: 5px; background: #d6d8cc; }
+		.progress-fill { width: 0; height: 100%; background: var(--coral); transition: width 100ms linear; }
+
+		.underbar { justify-content: space-between; gap: 18px; margin-top: 16px; }
+		.controls { gap: 17px; }
+		.control-hint { gap: 8px; color: var(--muted); font-size: 11px; }
+		.key {
+			min-width: 25px;
+			height: 24px;
+			padding: 0 6px;
+			display: inline-grid;
+			place-items: center;
+			color: #45483f;
+			background: #fffefa;
+			border: 1px solid #d5d6cd;
+			border-bottom-width: 2px;
+			border-radius: 2px;
+			font: 10px "DM Mono", monospace;
+		}
+
+		.run-status { color: var(--muted); font: 10px "DM Mono", monospace; letter-spacing: 0.06em; text-transform: uppercase; }
+		footer { display: flex; justify-content: space-between; gap: 16px; color: #898b81; font: 9px "DM Mono", monospace; letter-spacing: 0.04em; }
+
+		@keyframes rise-in { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+
+		@media (max-width: 620px) {
+			.page { width: calc(100% - 30px); padding: 18px 0 15px; }
+			.topbar { align-items: flex-start; }
+			.top-stats { gap: 10px; }
+			.stat { display: block; }
+			.stat-label { display: block; margin-bottom: 3px; font-size: 8px; }
+			.stat-value { font-size: 15px; }
+			.sound-button { width: 34px; height: 34px; margin-left: 2px; }
+			main { padding: 22px 0; }
+			.intro { align-items: flex-start; flex-direction: column; gap: 8px; }
+			.level-note { text-align: left; }
+			.game-frame { aspect-ratio: 16 / 8.15; min-height: unset; max-height: unset; box-shadow: 5px 5px 0 var(--ink); }
+			.underbar { align-items: flex-start; flex-direction: column; gap: 12px; margin-top: 13px; }
+			.controls { gap: 10px; }
+			.control-hint { gap: 6px; font-size: 10px; }
+			footer { font-size: 8px; }
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+		}
+	</style>
+</head>
+<body>
+	<div class="page">
+		<header class="topbar">
+			<div class="brand" aria-label="Kantensprung">
+				<span class="brand-mark" aria-hidden="true"></span>
+				<div>
+					<div class="brand-name">KANTENSPRUNG</div>
+					<div class="brand-tag">Ein kleiner Rhythmus-Runner</div>
+				</div>
+			</div>
+			<div class="top-stats">
+				<div class="stat"><span class="stat-label">Bestwert</span><span class="stat-value" id="bestScore">000</span></div>
+				<div class="stat"><span class="stat-label">Lauf</span><span class="stat-value" id="currentScore">000</span></div>
+				<button class="sound-button" id="soundButton" type="button" aria-label="Ton einschalten" title="Ton einschalten">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="sound-wave" d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+				</button>
+			</div>
+		</header>
+
+		<main>
+			<div class="intro">
+				<div>
+					<p class="eyebrow">Ein Knopf. Gutes Timing.</p>
+					<h1>Triff den <span>Beat.</span></h1>
+				</div>
+				<p class="level-note">RUN 01 &nbsp; / &nbsp; ENDLOS-MODUS</p>
+			</div>
+
+			<section class="game-frame" id="gameFrame" aria-label="Spielfeld Kantensprung">
+				<canvas id="gameCanvas" aria-label="Springe über Hindernisse"></canvas>
+				<div class="game-overlay" id="overlay">
+					<div class="overlay-content">
+						<p class="overlay-kicker" id="overlayKicker">Bereit für den ersten Sprung?</p>
+						<h2 class="overlay-title" id="overlayTitle">Lauf deinen<br>eigenen Beat.</h2>
+						<p class="overlay-copy" id="overlayCopy">Weiche den Kanten aus und bleib im Rhythmus.<br>Ein Treffer und der Lauf ist vorbei.</p>
+						<button class="play-button" id="playButton" type="button">Spiel starten <span aria-hidden="true">↗</span></button>
+					</div>
+				</div>
+			</section>
+			<div class="progress-track" aria-label="Lauffortschritt"><div class="progress-fill" id="progressFill"></div></div>
+			<div class="underbar">
+				<div class="controls">
+					<div class="control-hint"><span class="key">LEER</span><span>oder ↑ springen</span></div>
+					<div class="control-hint"><span class="key">KLICK</span><span>oder tippen</span></div>
+					<div class="control-hint"><span class="key">R</span><span>neu starten</span></div>
+				</div>
+				<span class="run-status" id="runStatus">Wartet auf dich</span>
+			</div>
+		</main>
+
+		<footer><span>KANTENSPRUNG &nbsp; / &nbsp; 001</span><span>GUTER LAUF. NOCH EINER.</span></footer>
+	</div>
+
+	<script>
+		(() => {
+			const canvas = document.querySelector("#gameCanvas");
+			const context = canvas.getContext("2d");
+			const frame = document.querySelector("#gameFrame");
+			const overlay = document.querySelector("#overlay");
+			const playButton = document.querySelector("#playButton");
+			const scoreLabel = document.querySelector("#currentScore");
+			const bestLabel = document.querySelector("#bestScore");
+			const progressFill = document.querySelector("#progressFill");
+			const runStatus = document.querySelector("#runStatus");
+			const soundButton = document.querySelector("#soundButton");
+			const overlayKicker = document.querySelector("#overlayKicker");
+			const overlayTitle = document.querySelector("#overlayTitle");
+			const overlayCopy = document.querySelector("#overlayCopy");
+			const width = 960;
+			const height = 490;
+			const groundY = 390;
+			const playerX = 155;
+			const playerSize = 34;
+			const levelLength = 4200;
+			const obstaclePlan = [
+				[600, "spike"], [980, "spike"], [1370, "block"], [1770, "spike"],
+				[2160, "spike"], [2570, "block"], [2990, "spike"], [3400, "spike"],
+				[3790, "block"], [4110, "spike"]
+			];
+			const bestKey = "kantensprung-best";
+			let state = "ready";
+			let score = 0;
+			let best = Number(localStorage.getItem(bestKey)) || 0;
+			let distance = 0;
+			let nextLoopDistance = levelLength;
+			let speed = 280;
+			let playerY = groundY - playerSize;
+			let velocityY = 0;
+			let rotation = 0;
+			let lastTime = 0;
+			let soundEnabled = false;
+			let audioContext;
+			let particles = [];
+
+			bestLabel.textContent = String(best).padStart(3, "0");
+
+			function resizeCanvas() {
+				const bounds = canvas.getBoundingClientRect();
+				const ratio = Math.min(window.devicePixelRatio || 1, 2);
+				canvas.width = Math.round(bounds.width * ratio);
+				canvas.height = Math.round(bounds.height * ratio);
+				context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
+				draw();
+			}
+
+			function resetRun() {
+				score = 0;
+				distance = 0;
+				nextLoopDistance = levelLength;
+				speed = 280;
+				playerY = groundY - playerSize;
+				velocityY = 0;
+				rotation = 0;
+				particles = [];
+				scoreLabel.textContent = "000";
+				progressFill.style.width = "0%";
+			}
+
+			function startRun() {
+				resetRun();
+				state = "running";
+				lastTime = performance.now();
+				overlay.classList.add("hidden");
+				runStatus.textContent = "Im Lauf";
+				requestAnimationFrame(loop);
+			}
+
+			function endRun() {
+				state = "over";
+				if (score > best) {
+					best = score;
+					localStorage.setItem(bestKey, String(best));
+					bestLabel.textContent = String(best).padStart(3, "0");
+				}
+				overlayKicker.textContent = score >= 100 ? "Sauber gelandet" : "Der Beat wartet";
+				overlayTitle.innerHTML = `Lauf vorbei.<br><span style="color:#c9f25c">${String(score).padStart(3, "0")}</span>`;
+				overlayCopy.innerHTML = score > 0 ? "Einmal durchatmen. Dann knackst du den Bestwert." : "Ein kleiner Sprung reicht. Versuch es direkt noch einmal.";
+				playButton.innerHTML = "Nochmal spielen <span aria-hidden=\"true\">↗</span>";
+				overlay.classList.remove("hidden");
+				runStatus.textContent = "Lauf beendet";
+				playTone(150, 0.16, "triangle");
+			}
+
+			function jump() {
+				if (state !== "running" || playerY < groundY - playerSize - 1) return;
+				velocityY = -690;
+				playTone(430, 0.07, "square");
+				for (let index = 0; index < 5; index++) {
+					particles.push({ x: playerX + playerSize / 2, y: groundY - 3, vx: -35 - Math.random() * 100, vy: -25 - Math.random() * 95, life: 0.35, maxLife: 0.35 });
+				}
+			}
+
+			function playTone(frequency, duration, type) {
+				if (!soundEnabled) return;
+				audioContext ??= new AudioContext();
+				const oscillator = audioContext.createOscillator();
+				const gain = audioContext.createGain();
+				oscillator.type = type;
+				oscillator.frequency.value = frequency;
+				gain.gain.setValueAtTime(0.06, audioContext.currentTime);
+				gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+				oscillator.connect(gain);
+				gain.connect(audioContext.destination);
+				oscillator.start();
+				oscillator.stop(audioContext.currentTime + duration);
+			}
+
+			function loop(now) {
+				if (state !== "running") return;
+				const delta = Math.min((now - lastTime) / 1000, 0.035);
+				lastTime = now;
+				update(delta);
+				draw();
+				if (state === "running") requestAnimationFrame(loop);
+			}
+
+			function update(delta) {
+				distance += speed * delta;
+				speed = Math.min(380, 280 + distance * 0.012);
+				score = Math.floor(distance / 13);
+				scoreLabel.textContent = String(score).padStart(3, "0");
+				progressFill.style.width = `${distance % levelLength / levelLength * 100}%`;
+
+				velocityY += 1900 * delta;
+				playerY += velocityY * delta;
+				if (playerY >= groundY - playerSize) {
+					playerY = groundY - playerSize;
+					velocityY = 0;
+				} else {
+					rotation += delta * 5.5;
+				}
+				if (playerY === groundY - playerSize) rotation = Math.round(rotation / (Math.PI / 2)) * (Math.PI / 2);
+
+				particles = particles.filter(particle => particle.life > 0);
+				for (const particle of particles) {
+					particle.life -= delta;
+					particle.x += particle.vx * delta;
+					particle.y += particle.vy * delta;
+					particle.vy += 260 * delta;
+				}
+
+				for (const [obstacleDistance, type] of obstaclePlan) {
+					const x = playerX + obstacleDistance - distance;
+					const obstacleWidth = type === "block" ? 39 : 36;
+					if (x + obstacleWidth < playerX || x > playerX + playerSize) continue;
+					const obstacleHeight = type === "block" ? 38 : 32;
+					const playerBottom = playerY + playerSize;
+					const overlapX = playerX + playerSize - 5 > x + 5 && playerX + 5 < x + obstacleWidth - 5;
+					const overlapY = playerBottom > groundY - obstacleHeight + 5;
+					if (overlapX && overlapY) {
+						endRun();
+						return;
+					}
+				}
+
+				if (distance >= nextLoopDistance) {
+					for (let index = 0; index < obstaclePlan.length; index++) obstaclePlan[index][0] += levelLength;
+					nextLoopDistance += levelLength;
+				}
+			}
+
+			function draw() {
+				context.clearRect(0, 0, width, height);
+				context.fillStyle = "#18251f";
+				context.fillRect(0, 0, width, height);
+
+				const glow = context.createRadialGradient(690, 145, 10, 690, 145, 420);
+				glow.addColorStop(0, "rgba(74, 113, 81, .25)");
+				glow.addColorStop(1, "rgba(24, 37, 31, 0)");
+				context.fillStyle = glow;
+				context.fillRect(0, 0, width, height);
+
+				context.strokeStyle = "rgba(220, 239, 218, .075)";
+				context.lineWidth = 1;
+				for (let x = -((distance * 0.15) % 48); x < width; x += 48) {
+					context.beginPath(); context.moveTo(x, 0); context.lineTo(x, groundY); context.stroke();
+				}
+				for (let y = 42; y < groundY; y += 42) {
+					context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke();
+				}
+
+				context.fillStyle = "rgba(201, 242, 92, .09)";
+				for (let index = 0; index < 9; index++) {
+					const x = (index * 137 - distance * 0.24 % 1100 + 1100) % 1100 - 70;
+					const h = 30 + (index * 29 % 80);
+					context.fillRect(x, groundY - h, 5, h);
+				}
+
+				context.fillStyle = "#27382f";
+				context.fillRect(0, groundY, width, height - groundY);
+				context.fillStyle = "#c9f25c";
+				context.fillRect(0, groundY, width, 3);
+				context.fillStyle = "rgba(201, 242, 92, .18)";
+				for (let x = -((distance % 48)); x < width; x += 48) context.fillRect(x, groundY + 27, 24, 2);
+
+				for (const [obstacleDistance, type] of obstaclePlan) {
+					const x = playerX + obstacleDistance - distance;
+					if (x < -55 || x > width + 55) continue;
+					if (type === "spike") drawSpike(x, groundY);
+					else drawBlock(x, groundY);
+				}
+
+				for (const particle of particles) {
+					context.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+					context.fillStyle = "#c9f25c";
+					context.fillRect(particle.x, particle.y, 4, 4);
+				}
+				context.globalAlpha = 1;
+
+				context.save();
+				context.translate(playerX + playerSize / 2, playerY + playerSize / 2);
+				context.rotate(rotation);
+				context.fillStyle = "#ff654d";
+				context.fillRect(-playerSize / 2, -playerSize / 2, playerSize, playerSize);
+				context.fillStyle = "#18251f";
+				context.fillRect(-7, -7, 14, 14);
+				context.fillStyle = "#f4f3ec";
+				context.fillRect(-4, -4, 8, 8);
+				context.restore();
+
+				context.fillStyle = "rgba(244, 243, 236, .58)";
+				context.font = "11px 'DM Mono', monospace";
+				context.fillText("01 / KEEP MOVING", 26, 34);
+				context.textAlign = "right";
+				context.fillText(`${String(score).padStart(3, "0")} M`, width - 26, 34);
+				context.textAlign = "left";
+			}
+
+			function drawSpike(x, baseY) {
+				context.beginPath();
+				context.moveTo(x, baseY);
+				context.lineTo(x + 18, baseY - 34);
+				context.lineTo(x + 36, baseY);
+				context.closePath();
+				context.fillStyle = "#ff654d";
+				context.fill();
+				context.strokeStyle = "#ff9b88";
+				context.lineWidth = 2;
+				context.stroke();
+			}
+
+			function drawBlock(x, baseY) {
+				context.fillStyle = "#79b8f2";
+				context.fillRect(x, baseY - 38, 39, 38);
+				context.strokeStyle = "#c5e1ff";
+				context.lineWidth = 2;
+				context.strokeRect(x + 4, baseY - 34, 31, 30);
+				context.fillStyle = "#18251f";
+				context.fillRect(x + 15, baseY - 23, 9, 9);
+			}
+
+			function handleAction() {
+				if (state === "running") jump();
+				else startRun();
+			}
+
+			playButton.addEventListener("click", startRun);
+			frame.addEventListener("pointerdown", event => {
+				if (event.target.closest("button")) return;
+				if (state === "running") { event.preventDefault(); jump(); }
+			});
+			window.addEventListener("keydown", event => {
+				if (["Space", "ArrowUp", "ArrowDown"].includes(event.code)) event.preventDefault();
+				if (event.repeat) return;
+				if (["Space", "ArrowUp", "KeyW"].includes(event.code)) handleAction();
+				if (event.code === "KeyR") startRun();
+			});
+			soundButton.addEventListener("click", () => {
+				soundEnabled = !soundEnabled;
+				soundButton.setAttribute("aria-label", soundEnabled ? "Ton ausschalten" : "Ton einschalten");
+				soundButton.title = soundEnabled ? "Ton ausschalten" : "Ton einschalten";
+				soundButton.style.background = soundEnabled ? "#c9f25c" : "transparent";
+				soundButton.querySelectorAll(".sound-wave").forEach(wave => wave.style.display = soundEnabled ? "" : "none");
+				if (soundEnabled) playTone(520, 0.08, "sine");
+			});
+			window.addEventListener("resize", resizeCanvas);
+			resizeCanvas();
+			draw();
+		})();
+	</script>
+</body>
+</html>
